@@ -13,6 +13,7 @@
  */
 
 import { loggers } from '../logger.util';
+import { delay } from '../core.util';
 
 /**
  * List of wallet instances that were started
@@ -147,10 +148,4 @@ export class WalletBenchmarkUtil {
       await delay(0); // Necessary to allow each log request to be fulfilled
     }
   }
-}
-
-async function delay(ms) {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
 }

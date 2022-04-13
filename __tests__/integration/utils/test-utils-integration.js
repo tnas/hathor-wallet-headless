@@ -11,6 +11,8 @@ import app from '../../../src';
 import { loggers } from './logger.util';
 import testConfig from '../configuration/test.config';
 import { WALLET_EVENTS, WalletBenchmarkUtil } from './benchmark/wallet-benchmark.util';
+import { delay, getRandomInt } from './core.util';
+import { TxTimeHelper } from './benchmark/tx-benchmark.util';
 
 const request = supertest(app);
 
@@ -76,18 +78,7 @@ export const AUTHORITY_VALUE = {
 
 export const HATHOR_TOKEN_ID = '00';
 
-/**
- * Generates a random positive integer between the maximum and minimum values,
- * with the default minimum equals zero
- * @param {number} max
- * @param {number} [min=0]
- * @returns {number} Random number
- */
-export function getRandomInt(max, min = 0) {
-  const _min = Math.ceil(min);
-  const _max = Math.floor(max);
-  return Math.floor(Math.random() * (_max - _min + 1)) + _min;
-}
+module.exports.getRandomInt = getRandomInt;
 
 export class TestUtils {
   /**
@@ -96,17 +87,6 @@ export class TestUtils {
    */
   static get request() {
     return request;
-  }
-
-  /**
-   * Simple way to wait asynchronously before continuing the funcion. Does not block the JS thread.
-   * @param {number} ms Amount of milliseconds to delay
-   * @returns {Promise<unknown>}
-   */
-  static async delay(ms) {
-    return new Promise(resolve => {
-      setTimeout(resolve, ms);
-    });
   }
 
   /**
@@ -121,7 +101,7 @@ export class TestUtils {
    * @returns {Promise<void>}
    */
   static async pauseForWsUpdate() {
-    await TestUtils.delay(testConfig.wsUpdateDelay);
+    await delay(testConfig.wsUpdateDelay);
   }
 
   /**
@@ -337,7 +317,7 @@ export class TestUtils {
       if (walletReady) {
         return;
       }
-      await TestUtils.delay(1000);
+      await delay(1000);
     }
   }
 
@@ -462,10 +442,13 @@ export class TestUtils {
       value,
       change_address: WALLET_CONSTANTS.genesis.addresses[0]
     };
+
+    const txTimeHelper = new TxTimeHelper('simple-send-tx');
     const response = await TestUtils.request
       .post('/wallet/simple-send-tx')
       .send(requestBody)
       .set(TestUtils.generateHeader(WALLET_CONSTANTS.genesis.walletId));
+    txTimeHelper.informResponse(response.body.hash);
 
     const transaction = TestUtils.handleTransactionResponse({
       methodName: 'injectFundsIntoAddress',
@@ -686,10 +669,12 @@ export class TestUtils {
     const requestBody = { ...params };
     delete requestBody.walletId; // Removing the only attribute that has no relation to the request
 
+    const txTimeHelper = new TxTimeHelper('utxo-consolidation');
     const utxoResponse = await TestUtils.request
       .post('/wallet/utxo-consolidation')
       .send(requestBody)
       .set(this.generateHeader(params.walletId));
+    txTimeHelper.informResponse(utxoResponse.body.txId);
 
     const transaction = TestUtils.handleTransactionResponse({
       methodName: 'consolidateUtxos',
@@ -724,15 +709,17 @@ export class TestUtils {
     const requestBody = { ...params };
     delete requestBody.walletId; // Removing the only attribute that has no relation to the request
 
-    const utxoResponse = await TestUtils.request
+    const txTimeHelper = new TxTimeHelper('create-nft');
+    const nftResponse = await TestUtils.request
       .post('/wallet/create-nft')
       .send(requestBody)
       .set(this.generateHeader(params.walletId));
+    txTimeHelper.informResponse(nftResponse.body.hash);
 
     const transaction = TestUtils.handleTransactionResponse({
       methodName: 'createNft',
       requestBody,
-      txResponse: utxoResponse,
+      txResponse: nftResponse,
       dontLogErrors: params.dontLogErrors
     });
 

@@ -1,6 +1,7 @@
 import { loggers } from './logger.util';
 import { TestUtils, WALLET_CONSTANTS } from './test-utils-integration';
 import { WalletBenchmarkUtil } from './benchmark/wallet-benchmark.util';
+import { TxTimeHelper } from './benchmark/tx-benchmark.util';
 
 /**
  * A helper for testing the wallet
@@ -268,10 +269,12 @@ export class WalletHelper {
     }
 
     // Executing the request
+    const txTimeHelper = new TxTimeHelper('create-token');
     const newTokenResponse = await TestUtils.request
       .post('/wallet/create-token')
       .set({ 'x-wallet-id': this.#walletId })
       .send(tokenCreationBody);
+    txTimeHelper.informResponse(newTokenResponse.body.hash);
 
     const transaction = TestUtils.handleTransactionResponse({
       methodName: 'createToken',
@@ -358,10 +361,12 @@ export class WalletHelper {
       sendOptions.change_address = options.change_address;
     }
 
+    const txTimeHelper = new TxTimeHelper('send-tx');
     const response = await TestUtils.request
       .post('/wallet/send-tx')
       .send(sendOptions)
       .set(TestUtils.generateHeader(this.#walletId));
+    txTimeHelper.informResponse(response.body.hash);
 
     const transaction = TestUtils.handleTransactionResponse({
       methodName: 'sendTx',

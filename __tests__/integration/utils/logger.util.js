@@ -8,7 +8,8 @@ export const loggers = {
    * @type: TxLogger
    */
   test: null,
-  walletBenchmark: null
+  walletBenchmark: null,
+  txBenchmark: null,
 };
 
 /**
