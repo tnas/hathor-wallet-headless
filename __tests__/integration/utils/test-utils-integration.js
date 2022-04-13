@@ -8,8 +8,9 @@ import {
   wallet,
 } from '@hathor/wallet-lib';
 import app from '../../../src';
-import { loggers } from '../txLogger';
+import { loggers } from './logger.util';
 import testConfig from '../configuration/test.config';
+import { WALLET_EVENTS, WalletBenchmarkUtil } from './benchmark/wallet-benchmark.util';
 
 const request = supertest(app);
 
@@ -252,6 +253,13 @@ export class TestUtils {
    */
   static async startWallet(walletObj, options = {}) {
     let response;
+
+    WalletBenchmarkUtil.informWalletEvent(
+      walletObj.walletId,
+      WALLET_EVENTS.startRequest,
+      { multisig: walletObj.multisig }
+    );
+
     // Request the Wallet start
     if (walletObj.words) {
       response = await request
@@ -266,6 +274,10 @@ export class TestUtils {
           multisig: walletObj.multisig || false,
         });
     }
+    WalletBenchmarkUtil.informWalletEvent(
+      walletObj.walletId,
+      WALLET_EVENTS.startResponse,
+    );
 
     // Handle errors
     if (response.status !== 200) {
@@ -279,13 +291,11 @@ export class TestUtils {
 
     // Wait until the wallet is actually started
     if (options.waitWalletReady) {
-      while (true) {
-        const walletReady = await TestUtils.isWalletReady(walletObj.walletId);
-        if (walletReady) {
-          break;
-        }
-        await TestUtils.delay(1000);
-      }
+      await TestUtils.poolUntilWalletReady(walletObj.walletId);
+      WalletBenchmarkUtil.informWalletEvent(
+        walletObj.walletId,
+        WALLET_EVENTS.confirmedReady,
+      );
     }
     // Log the success and return
     if (walletObj.words) {
@@ -314,7 +324,21 @@ export class TestUtils {
         throw err;
       });
 
-    return res.body?.statusCode === HathorWallet.READY;
+    const statusCode = res.body?.statusCode;
+    if (statusCode === HathorWallet.ERROR) {
+      throw new Error(`Wallet ${walletId} initialization failed.`);
+    }
+    return statusCode === HathorWallet.READY;
+  }
+
+  static async poolUntilWalletReady(walletId) {
+    while (true) {
+      const walletReady = await TestUtils.isWalletReady(walletId);
+      if (walletReady) {
+        return;
+      }
+      await TestUtils.delay(1000);
+    }
   }
 
   /**

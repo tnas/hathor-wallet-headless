@@ -7,6 +7,9 @@
  * @property {number} [startDuration] Milisseconds to receive response on `/start`
  * @property {number} [walletReadyTime]
  * @property {number} [walletReadyDuration] Milisseconds from request `/start` to `/status` ready
+ * @property {boolean} [hasFailed]
+ * @property {number} [failureTime]
+ * @property {number} [failureDuration] Milisseconds from request `/start` to failure
  */
 
 import { loggers } from '../logger.util';
@@ -39,6 +42,7 @@ export const WALLET_EVENTS = {
   startRequest: 'startRequest',
   startResponse: 'startResponse',
   confirmedReady: 'confirmedReady',
+  failure: 'failure',
 };
 
 export class WalletBenchmarkUtil {
@@ -64,19 +68,17 @@ export class WalletBenchmarkUtil {
         walletObj.walletReadyTime = Date.now().valueOf();
         walletObj.walletReadyDuration = walletObj.walletReadyTime - walletObj.startRequestTime;
         break;
+      case WALLET_EVENTS.failure:
+        walletObj.failureTime = Date.now().valueOf();
+        walletObj.failureDuration = walletObj.failureTime - walletObj.startRequestTime;
+        break;
       default:
         console.warn(`Unknown wallet event: ${event}`);
     }
   }
 
   static calculateSummary(walletIds) {
-    const summary = {
-      avgStartResponseTime: 0,
-      avgReadyTime: 0,
-      avgStartResponseTimeMultisig: 0,
-      avgReadyTimeMultisig: 0,
-      startedWallets: 0,
-    };
+    const summary = {};
     let sumResponseTime = 0;
     let sumReadyTime = 0;
     let sumResponseTimeMultisig = 0;
@@ -91,6 +93,8 @@ export class WalletBenchmarkUtil {
 
     for (const walletId of filteredInstanceIds) {
       const wallet = instances[walletId];
+      if (wallet.hasFailed) continue; // Do not count failed wallets
+
       if (wallet.isMultisig) {
         ++amountOfWalletsMultisig;
         sumResponseTimeMultisig += wallet.startDuration;
@@ -102,24 +106,45 @@ export class WalletBenchmarkUtil {
       }
     }
 
-    summary.avgStartResponseTimeMultisig = sumResponseTimeMultisig / amountOfWalletsMultisig;
-    summary.avgReadyTimeMultisig = sumReadyTimeMultisig / amountOfWalletsMultisig;
-    summary.avgStartResponseTime = sumResponseTime / amountOfWallets;
-    summary.avgReadyTime = sumReadyTime / amountOfWallets;
+    if (amountOfWalletsMultisig) {
+      summary.avgStartResponseTimeMultisig = sumResponseTimeMultisig / amountOfWalletsMultisig;
+      summary.avgReadyTimeMultisig = sumReadyTimeMultisig / amountOfWalletsMultisig;
+    }
+    if (amountOfWallets) {
+      summary.avgStartResponseTime = sumResponseTime / amountOfWallets;
+      summary.avgReadyTime = sumReadyTime / amountOfWallets;
+    }
     summary.startedWallets = amountOfWallets + amountOfWalletsMultisig;
 
     return {
       ...summary,
-      wallets: instances
+      wallets: filteredInstanceIds.map(walletId => {
+        const w = instances[walletId];
+        const treated = { ...w };
+
+        if (w.startRequestTime) {
+          treated.startRequestTime = new Date(w.startRequestTime).toISOString();
+        }
+        if (w.startResponseTime) {
+          treated.startResponseTime = new Date(w.startResponseTime).toISOString();
+        }
+        if (w.walletReadyTime) {
+          treated.walletReadyTime = new Date(w.walletReadyTime).toISOString();
+        }
+        if (w.failureTime) {
+          treated.failureTime = new Date(w.failureTime).toISOString();
+        }
+
+        return treated;
+      })
     };
   }
 
   static async logResults() {
-    loggers.walletBenchmark.insertLineToLog('Will start results');
     for (const walletId in instances) {
       const metadata = { wallet: instances[walletId] };
       loggers.walletBenchmark.insertLineToLog('Wallet instance', metadata);
-      await delay(0);
+      await delay(0); // Necessary to allow each log request to be fulfilled
     }
   }
 }
