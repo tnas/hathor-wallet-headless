@@ -9,6 +9,8 @@
  * @property {number} [walletReadyDuration] Milisseconds from request `/start` to `/status` ready
  */
 
+import { loggers } from '../logger.util';
+
 /**
  * List of wallet instances that were started
  * @type {Record<string, WalletInstanceBenchmark>}
@@ -111,4 +113,19 @@ export class WalletBenchmarkUtil {
       wallets: instances
     };
   }
+
+  static async logResults() {
+    loggers.walletBenchmark.insertLineToLog('Will start results');
+    for (const walletId in instances) {
+      const metadata = { wallet: instances[walletId] };
+      loggers.walletBenchmark.insertLineToLog('Wallet instance', metadata);
+      await delay(0);
+    }
+  }
+}
+
+async function delay(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
 }
