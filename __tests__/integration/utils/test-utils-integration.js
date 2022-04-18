@@ -40,9 +40,28 @@ export const WALLET_CONSTANTS = {
     walletId: 'genesiswallet',
     words: 'avocado spot town typical traffic vault danger century property shallow divorce festival spend attack anchor afford rotate green audit adjust fade wagon depart level',
     addresses: [
+      'WPhehTyNHTPz954CskfuSgLEfuKXbXeK3f',
       'WY1URKUnqCTyiixW1Dw29vmeG99hNN4EW6', // Genesis funds, index 1
-      'WRTFYzhTHkfYwub8EWVtAcUgbdUpsYMBpb', // Miner rewards, index 2
-      'WhpJeUtBLrDHbKDoMC9ffMxwHqvsrNzTFV', // index 3
+      'WRTFYzhTHkfYwub8EWVtAcUgbdUpsYMBpb',
+      'WhpJeUtBLrDHbKDoMC9ffMxwHqvsrNzTFV',
+      'WeBBm1LfKBH3V5rEL5DAHtjjDiAws3Z83m',
+      'WWTNERwV3dcvWjCbR4rizMuEqPbFjZsd3C',
+      'WR4EQB8wZUzsVnqhodBBbtYsvKxrr9puG7',
+      'WjJZoqV3AbRfgBWNfjAyVYTydFuWNPgspW',
+      'Wh2FHvahkwvt29saUz7jnhuDh3WDHuc2ZY',
+      'Wg5bXXQpRE5DWwsGDNfHsKyisJPVotxhhS',
+      'WiodAJyH67sSTGgpRPXWsVGEfGESN7ykEt',
+      'WNpFPr1EDwBgtTqYUNTbKTRpbGj6vdNgdL',
+      'WVPeyNm4pWjJJixjj1DsRc4ceYd75xCyxq',
+      'WcZotwyy1FnFYuA8D2LqrUBSNEFcPr3T7a',
+      'Wki6BdLTCzS4ZoQSY1QgfgzQdgT9R3txEb',
+      'Wgk7UPN4zZZdMbsCNMSosRwsvHtMoWf8S6',
+      'Wmqn3sanBexFaNk3nDtdb4SnHxB5MRzr7m',
+      'Wbh9FrUF85FWUh7xgpqf9gjH7D2f3Py4kc',
+      'WWGKeK7yJcKqvxMj2C8TFFJLooqq8Kc65z',
+      'WRenJ9f6yqrYRzBUwqbBFAxAY7JzwryKut',
+      'WQozCB8X2FFM9QtEMoPjo6xERVTkiBw8Mj',
+      'Wds8d4vy691GwVDdzKrw1LpnvBR283VTci',
     ]
   },
   miner: {
@@ -244,7 +263,11 @@ export class TestUtils {
     if (walletObj.words) {
       response = await request
         .post('/start')
-        .send({ seed: walletObj.words, 'wallet-id': walletObj.walletId });
+        .send({
+          seed: walletObj.words,
+          'wallet-id': walletObj.walletId,
+          preCalculatedAddresses: walletObj.addresses
+        });
     } else {
       response = await request
         .post('/start')
@@ -252,6 +275,7 @@ export class TestUtils {
           seedKey: walletObj.seedKey,
           'wallet-id': walletObj.walletId,
           multisig: walletObj.multisig || false,
+          preCalculatedAddresses: walletObj.addresses
         });
     }
     WalletBenchmarkUtil.informWalletEvent(
